@@ -1,0 +1,21 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfvars
+*.auto.tfvars
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Backend/local config
+backend.hcl
+backend.conf
+
+# Editors/OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
