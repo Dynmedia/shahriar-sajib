@@ -17,7 +17,7 @@ resource "aws_backup_vault_lock_configuration" "vault_lock" {
   backup_vault_name         = aws_backup_vault.central.name
   min_retention_days        = 7
   max_retention_days        = 365
-  changeable_for_days       = 3
+  changeable_for_days       = 4
 }
 
 resource "aws_backup_vault_policy" "central_copyin_policy" {
