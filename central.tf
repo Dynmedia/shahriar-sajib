@@ -15,7 +15,7 @@ resource "aws_backup_vault_lock_configuration" "vault_lock" {
   provider                  = aws.mgmt
   count                     = var.enable_vault_lock ? 1 : 0
   backup_vault_name         = aws_backup_vault.central.name
-  min_retention_days        = 7
+  min_retention_days        = 10
   max_retention_days        = 365
   changeable_for_days       = 4
 }
