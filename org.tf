@@ -23,7 +23,7 @@ locals {
             "complete_backup_window_minutes" : { "@@assign" : "180" },
             "target_backup_vault_name" : { "@@assign" : "Default" },
             "lifecycle" : {
-              "delete_after_days" : { "@@assign" : "1" }
+              "delete_after_days" : { "@@assign" : "30" }
             },
             "copy_actions" : {
               "${local.central_vault_arn}" : {
