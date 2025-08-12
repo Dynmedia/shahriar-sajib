@@ -14,7 +14,7 @@ locals {
     "plans" : {
       "DailyBackupPlan" : {
         "regions" : {
-          "@@assign" : ["us-east-1"]
+          "@@assign" : ["eu-central-1"]
         },
         "rules" : {
           "DailyRule" : {

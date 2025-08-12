@@ -1,10 +1,10 @@
 variable "region" {
   type    = string
-  default = "us-east-1"
+  default = "eu-central-1"
 }
 
 variable "organization_id" {
-  default = "o-zh0iuh87kj"
+  default = "o-ppkzjmywn4"
 }
 
 variable "management_account_profile" {
@@ -13,12 +13,12 @@ variable "management_account_profile" {
 }
 
 variable "central_account_id" {
-  default = "515645413120"
+  default = "660571558619"
 }
 
 variable "ou_ids" {
   type    = list(string)
-  default = ["ou-c7dt-bn8vj0b5", "ou-c7dt-398jbgv3"]
+  default = ["ou-rzmo-qfmzlwhq", "ou-rzmo-bjyh9b48"]
 }
 
 variable "central_backup_vault_name" {
