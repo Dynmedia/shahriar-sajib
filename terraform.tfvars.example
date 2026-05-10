@@ -1,0 +1,41 @@
+# =============================================================================
+# Example terraform.tfvars - Copy to terraform.tfvars and fill in values
+# =============================================================================
+
+# AWS CLI profiles
+management_account_profile = "AWSAdministratorAccess-660571558619"
+backup_account_profile     = "backup"
+
+# Region
+region = "eu-central-1"
+
+# Organization
+organization_id = "o-ppkzjmywn4"
+backup_account_id = "296297841611"
+
+# OUs to cover (Sandbox, Sandbox-Managed)
+ou_ids = [
+  "ou-rzmo-qfmzlwhq", # Sandbox
+  "ou-rzmo-bjyh9b48"  # Sandbox-Managed
+]
+
+# Vault configuration
+central_backup_vault_name = "central-backup-vault"
+enable_vault_lock         = true
+
+# Retention
+local_retention_days  = 30
+central_retention_days = 365
+
+# Schedule (daily at 02:00 UTC)
+backup_schedule = "cron(0 2 ? * * *)"
+
+# Notifications
+notification_email = ""  # Set to receive backup failure alerts
+
+# Cost estimation (fill in your estimated data sizes)
+estimated_s3_data_gb         = 0
+estimated_dynamodb_data_gb   = 0
+estimated_rds_data_gb        = 0
+estimated_opensearch_data_gb = 0
+estimated_efs_data_gb        = 0
