@@ -1,0 +1,40 @@
+# =============================================================================
+# Example terraform.tfvars — copy to terraform.tfvars and adjust.
+# terraform.tfvars is gitignored; commit only this example.
+# =============================================================================
+
+# Management-account profile for LOCAL runs (CI uses the OIDC role instead).
+management_account_profile = "mgt"
+
+region = "eu-central-1"
+
+# -----------------------------------------------------------------------------
+# PHASE 1 (pilot): Sandbox-Managed OU only, enforce on EC2 instances + volumes.
+# This is the default in variables.tf; shown here for clarity.
+# -----------------------------------------------------------------------------
+attach_target_ids = [
+  "ou-rzmo-bjyh9b48", # Sandbox-Managed
+]
+
+enforced_resource_types = [
+  "ec2:instance",
+  "ec2:volume",
+]
+
+# -----------------------------------------------------------------------------
+# SAFEST FIRST APPLY (optional): attach to the pilot OU but block NOTHING, to
+# observe the effective policy before enforcing. Uncomment to use.
+# -----------------------------------------------------------------------------
+# enforced_resource_types = []
+
+# -----------------------------------------------------------------------------
+# LATER PHASES (examples — do NOT enable until the pilot is proven):
+# -----------------------------------------------------------------------------
+# attach_target_ids = [
+#   "ou-rzmo-bjyh9b48", # Sandbox-Managed
+#   "ou-rzmo-b8kwzyok", # Tools
+#   "ou-rzmo-4aok8egi", # Workloads
+#   # ... add Bucket-A OUs one at a time (see README)
+#   "386372465922",     # dyn-mimir-fileflows-prod   (Contentdesk, per-account)
+#   "241533154876",     # dyn-mimir-fileflows-staging(Contentdesk, per-account)
+# ]
