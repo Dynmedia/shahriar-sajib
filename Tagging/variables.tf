@@ -10,7 +10,8 @@ variable "management_account_profile" {
     policies can only be created/attached from the management account. In CI
     this is unused because the GitHub Actions OIDC role
     (GitHubActions-TaggingPolicy-Role) supplies credentials directly; it is here
-    for local runs, mirroring backup-solution.
+    for local runs, mirroring backup-solution. Set to "" to use the default
+    credential chain (CI).
   EOT
   type        = string
   default     = "mgt"
@@ -37,18 +38,38 @@ variable "attach_target_ids" {
     controlled purely by WHERE this attaches. To exclude an account you simply
     do not attach to it (or to any OU above it).
 
-    PHASE 1 (default): Sandbox-Managed OU only. This is the safe pilot — 9
-    sandbox accounts, no production impact, and it cleanly avoids all six
-    excluded accounts (none live in this OU).
-
-    Later phases add more OUs one at a time. The split OUs (Contentdesk,
-    DeltatreAxis) and root-level dyn-mmo are handled by NEVER attaching to them;
-    the two monitored Contentdesk accounts (mimir-fileflows prod/staging) would
-    be attached individually by ID when their phase arrives. See README.
+    ORG-WIDE minus the six excluded accounts. Because tag policies cannot
+    express exclusions, org-wide-minus-six is built as: attach to every OU with
+    no excluded account inside, plus attach individually to the two monitored
+    accounts in the Contentdesk OU, plus aws_mmo at root level. The excluded
+    accounts (dyn-contentdesk-*, dyn-deltatreaxis-prod, voscustomer1002.vos,
+    dyn-mmo) are covered by never attaching to them or to any OU above them.
+    Never attach to the root -- validation below refuses it.
   EOT
   type        = list(string)
   default = [
-    "ou-rzmo-bjyh9b48", # Sandbox-Managed (Phase 1 pilot)
+    # Whole-OU attachments (no excluded account inside):
+    "ou-rzmo-x0s5egxb", # AFT
+    "ou-rzmo-yjugum6z", # Braze
+    "ou-rzmo-xuv5mooa", # Business-Intelligence
+    "ou-rzmo-b9fl9bvd", # DynBlog
+    "ou-rzmo-3xaoy7pi", # DynCustomerControl
+    "ou-rzmo-nqhhq24i", # FX-Digital
+    "ou-rzmo-8qij8v74", # Infrastructure
+    "ou-rzmo-qfmzlwhq", # Sandbox
+    "ou-rzmo-bjyh9b48", # Sandbox-Managed
+    "ou-rzmo-6aq0nycd", # Security
+    "ou-rzmo-3fzvwamr", # Tooling
+    "ou-rzmo-b8kwzyok", # Tools
+    "ou-rzmo-4aok8egi", # Workloads
+    # Split OU Contentdesk: attach ONLY the 2 monitored accounts, never the OU
+    # (it also holds the 3 excluded dyn-contentdesk-* accounts):
+    "386372465922", # dyn-mimir-fileflows-prod
+    "241533154876", # dyn-mimir-fileflows-staging
+    # Split OU DeltatreAxis: NOT attached (both accounts are excluded).
+    # Root-level account aws_mmo: attached individually (root must not be
+    # attached); dyn-mmo is excluded so it is omitted:
+    "992382361990", # aws_mmo
   ]
   validation {
     condition     = length(var.attach_target_ids) > 0
@@ -70,25 +91,88 @@ variable "attach_target_ids" {
 variable "enforced_resource_types" {
   description = <<-EOT
     Resource types for which non-compliant tag VALUES are BLOCKED at tagging
-    time (the tag policy `enforced_for` field), applied to the value-constrained
+    time (the tag policy enforced_for field), applied to the value-constrained
     keys (Environment, Project, CostCenter, Stage, Team).
 
-    IMPORTANT — what enforcement does and does NOT do:
+    IMPORTANT -- what enforcement does and does NOT do:
       * It BLOCKS a tagging operation that sets a value outside the allowed list,
         for the resource types listed here.
       * It does NOT block untagged resources. A resource created with no tags,
         or without the key, is not evaluated. (That would require an SCP.)
-      * Only resource types that support tag-policy enforcement are valid here.
+      * "All AWS resources" is NOT possible. AWS supports enforcement for a
+        fixed subset of services only and offers no global wildcard. This list
+        is every service exposing a <service>:ALL_SUPPORTED enforcement token,
+        i.e. the broadest enforcement AWS allows.
 
-    PHASE 1 (default): EC2 instances and volumes only — the lowest-surface
-    starting point. Empty list = attached but DETECT-ONLY (nothing blocked),
-    which is the safest possible first apply if you want to observe before
-    enforcing.
+    HIGH BLAST RADIUS. Combined with the organization-wide attach_target_ids,
+    this blocks non-compliant tag VALUES across every monitored account for all
+    the services below. A create/tag operation setting e.g. Environment=dev on
+    an S3 bucket, RDS instance, Lambda function, etc. is REJECTED at the API.
+    Announce to account owners before applying; expect breakage where existing
+    automation sets non-conforming values. Set to [] to attach but block
+    nothing (detect-only) if you want to observe first.
   EOT
   type        = list(string)
+
+  # Every service exposing <service>:ALL_SUPPORTED with enforcement = Yes in the
+  # AWS "Services and resource types that support enforcement" reference.
+  # Services without an ALL_SUPPORTED enforcement token (e.g. iam, glue,
+  # guardduty, securitylake, macie2) are intentionally omitted: they cannot be
+  # enforced this way and an unsupported token fails the API.
   default = [
-    "ec2:instance",
-    "ec2:volume",
+    "acm:ALL_SUPPORTED",
+    "acm-pca:ALL_SUPPORTED",
+    "athena:ALL_SUPPORTED",
+    "backup:ALL_SUPPORTED",
+    "cloudtrail:ALL_SUPPORTED",
+    "cloudwatch:ALL_SUPPORTED",
+    "codebuild:ALL_SUPPORTED",
+    "codecommit:ALL_SUPPORTED",
+    "codepipeline:ALL_SUPPORTED",
+    "config:ALL_SUPPORTED",
+    "dms:ALL_SUPPORTED",
+    "dynamodb:ALL_SUPPORTED",
+    "ec2:ALL_SUPPORTED",
+    "ecr:ALL_SUPPORTED",
+    "ecs:ALL_SUPPORTED",
+    "eks:ALL_SUPPORTED",
+    "elasticache:ALL_SUPPORTED",
+    "elasticbeanstalk:ALL_SUPPORTED",
+    "elasticfilesystem:ALL_SUPPORTED",
+    "elasticmapreduce:ALL_SUPPORTED",
+    "entityresolution:ALL_SUPPORTED",
+    "events:ALL_SUPPORTED",
+    "firehose:ALL_SUPPORTED",
+    "fsx:ALL_SUPPORTED",
+    "healthlake:ALL_SUPPORTED",
+    "internetmonitor:ALL_SUPPORTED",
+    "kinesisanalytics:ALL_SUPPORTED",
+    "kms:ALL_SUPPORTED",
+    "lambda:ALL_SUPPORTED",
+    "mq:ALL_SUPPORTED",
+    "network-firewall:ALL_SUPPORTED",
+    "oam:ALL_SUPPORTED",
+    "omics:ALL_SUPPORTED",
+    "organizations:ALL_SUPPORTED",
+    "pipes:ALL_SUPPORTED",
+    "ram:ALL_SUPPORTED",
+    "rbin:ALL_SUPPORTED",
+    "rds:ALL_SUPPORTED",
+    "redshift:ALL_SUPPORTED",
+    "redshift-serverless:ALL_SUPPORTED",
+    "resource-groups:ALL_SUPPORTED",
+    "route53:ALL_SUPPORTED",
+    "route53resolver:ALL_SUPPORTED",
+    "s3:ALL_SUPPORTED",
+    "scheduler:ALL_SUPPORTED",
+    "secretsmanager:ALL_SUPPORTED",
+    "sns:ALL_SUPPORTED",
+    "sqs:ALL_SUPPORTED",
+    "ssm:ALL_SUPPORTED",
+    "states:ALL_SUPPORTED",
+    "transfer:ALL_SUPPORTED",
+    "wisdom:ALL_SUPPORTED",
+    "workspaces:ALL_SUPPORTED",
   ]
 }
 
