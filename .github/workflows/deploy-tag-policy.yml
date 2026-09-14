@@ -1,0 +1,60 @@
+name: Deploy Tag Policy
+
+# Organization tag policy (Tagging/) applied to the management account via the
+# GitHubActions-TaggingPolicy-Role OIDC role. Manual dispatch only — this is a
+# preventive org-wide control, so it should never fire automatically.
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "plan (safe, read-only) or apply"
+        required: true
+        default: "plan"
+        type: choice
+        options:
+          - plan
+          - apply
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  tag-policy:
+    name: Terraform (${{ inputs.action }})
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Tagging
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (management account, OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::660571558619:role/GitHubActions-TaggingPolicy-Role
+          aws-region: eu-central-1
+          audience: sts.amazonaws.com
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      # In CI the OIDC role supplies credentials; there is no local profile, so
+      # blank the profile var to use the default credential chain.
+      - name: Terraform Init
+        run: terraform init -input=false
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        run: terraform plan -input=false -var 'management_account_profile=' -out=tfplan
+
+      - name: Terraform Apply
+        if: ${{ inputs.action == 'apply' }}
+        run: terraform apply -input=false -auto-approve tfplan
