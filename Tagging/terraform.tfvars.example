@@ -1,40 +1,26 @@
 # =============================================================================
-# Example terraform.tfvars — copy to terraform.tfvars and adjust.
+# Example terraform.tfvars - copy to terraform.tfvars and adjust.
 # terraform.tfvars is gitignored; commit only this example.
 # =============================================================================
 
-# Management-account profile for LOCAL runs (CI uses the OIDC role instead).
+# Management-account profile for LOCAL runs (CI sets this to "" and uses OIDC).
 management_account_profile = "mgt"
 
 region = "eu-central-1"
 
 # -----------------------------------------------------------------------------
-# PHASE 1 (pilot): Sandbox-Managed OU only, enforce on EC2 instances + volumes.
-# This is the default in variables.tf; shown here for clarity.
+# The module defaults are ORG-WIDE attachment + BROAD enforcement (every
+# service that supports tag-policy enforcement). You normally do NOT need to
+# set attach_target_ids or enforced_resource_types here -- the defaults in
+# variables.tf already encode the org-wide-minus-six scope and the full
+# enforcement list. Override below only to NARROW scope.
 # -----------------------------------------------------------------------------
-attach_target_ids = [
-  "ou-rzmo-bjyh9b48", # Sandbox-Managed
-]
 
-enforced_resource_types = [
-  "ec2:instance",
-  "ec2:volume",
-]
-
-# -----------------------------------------------------------------------------
-# SAFEST FIRST APPLY (optional): attach to the pilot OU but block NOTHING, to
-# observe the effective policy before enforcing. Uncomment to use.
-# -----------------------------------------------------------------------------
+# SAFER FIRST APPLY (recommended): attach org-wide but block NOTHING, so you can
+# inspect the effective policy before enforcement rejects anything. Uncomment:
 # enforced_resource_types = []
 
-# -----------------------------------------------------------------------------
-# LATER PHASES (examples — do NOT enable until the pilot is proven):
-# -----------------------------------------------------------------------------
-# attach_target_ids = [
-#   "ou-rzmo-bjyh9b48", # Sandbox-Managed
-#   "ou-rzmo-b8kwzyok", # Tools
-#   "ou-rzmo-4aok8egi", # Workloads
-#   # ... add Bucket-A OUs one at a time (see README)
-#   "386372465922",     # dyn-mimir-fileflows-prod   (Contentdesk, per-account)
-#   "241533154876",     # dyn-mimir-fileflows-staging(Contentdesk, per-account)
-# ]
+# NARROWER PILOT (optional): sandbox only, EC2 only. Uncomment BOTH to override
+# the org-wide defaults:
+# attach_target_ids       = ["ou-rzmo-bjyh9b48"]  # Sandbox-Managed
+# enforced_resource_types = ["ec2:instance", "ec2:volume"]

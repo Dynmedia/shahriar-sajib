@@ -87,24 +87,45 @@ DynBlog, Sandbox-Managed, FX-Digital, Sandbox, AFT, Business-Intelligence, Braze
 
 ---
 
-## Phased rollout
+## Scope of the current defaults (ORG-WIDE, BROAD ENFORCEMENT)
 
-Each phase is a small change to `attach_target_ids` and/or
-`enforced_resource_types`. Gate each on the previous being proven.
+> **This code is configured for maximum coverage, not a pilot.** The defaults
+> attach the policy **organization-wide** (every account minus the six
+> exclusions) and enforce **every AWS service that supports tag-policy
+> enforcement** (all `<service>:ALL_SUPPORTED` tokens, ~53 services).
 
-1. **Phase 1 (default in this code): pilot.** Attach to **Sandbox-Managed**
-   only; enforce `ec2:instance`, `ec2:volume`. Nine sandbox accounts, no
-   production impact, avoids all six exclusions. Optionally set
-   `enforced_resource_types = []` for a first apply that attaches but blocks
-   nothing (observe the effective policy before enforcing).
-2. **Phase 2:** widen `enforced_resource_types` (e.g. `dynamodb:table`, other
-   supported types), still Sandbox-Managed only.
-3. **Phase 3:** add Bucket-A OUs to `attach_target_ids` one at a time,
-   highest-tolerance first (Tools, Workloads) before customer-facing.
-4. **Phase 4:** add the two Contentdesk mimir accounts by ID.
+Plan against the live org: **16 attachments to add, 1 policy update, 0 destroy**.
 
-Only resource types that support tag-policy enforcement are valid in
-`enforced_resource_types`.
+- **Attachments (16):** 13 whole OUs + the 2 Contentdesk mimir accounts + aws_mmo.
+- **Enforcement:** the 5 value keys (Environment, Project, CostCenter, Stage,
+  Team) carry `enforced_for` across all supported services. Owner stays
+  presence-only.
+
+### What this blocks on apply
+
+Across every monitored account, a create/tag operation that sets a
+**non-conforming value** (e.g. `Environment=dev`, `Project=matchday-support`)
+on any enforced resource type is **REJECTED at the API**. It does NOT block
+untagged resources. "All AWS resources" is not achievable; AWS only supports
+enforcement for the fixed service list in `variables.tf`.
+
+### Strongly recommended before applying
+
+Because compliance is currently ~0% org-wide, turning this on will reject
+real, in-flight tagging operations in production. Before `apply`:
+
+1. **Announce** to all account owners.
+2. Consider a first apply with `enforced_resource_types = []` (attaches
+   org-wide but blocks nothing) to observe the effective policy, then a second
+   apply that flips enforcement on.
+3. Have the rollback ready (below): removing `enforced_for` or detaching is
+   immediate and destroys nothing.
+
+### Narrowing later if needed
+
+To reduce scope, edit `attach_target_ids` (remove OUs/accounts) or
+`enforced_resource_types` (drop services, or set to `[]`). Only service tokens
+that expose `ALL_SUPPORTED` with enforcement support are valid.
 
 ---
 
