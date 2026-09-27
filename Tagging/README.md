@@ -187,11 +187,14 @@ Everything is reversible and destroys no member-account resources:
 
 ## State & CI limitations (read before relying on CI)
 
-- **State is local** (mirrors `backup-solution`, which has no backend). That is
-  fine for a `mgt`-profile local apply, but CI cannot share local state. If you
-  want CI to be the source of truth, add a remote backend (S3 in the management
-  account, e.g. `dynmedia-terraform-state-660571558619`) **before** first apply,
-  and do the one-time `terraform import` against that backend.
+- **State is remote (S3).** `s3://dynmedia-terraform-state-660571558619/tagging-policy/terraform.tfstate`
+  in the management account (versioned, encrypted, native lockfile — Terraform
+  >= 1.10). Locally: `export AWS_PROFILE=mgt && terraform init`. Migrated from
+  local state with all 17 resources; `terraform plan` showed no changes.
+- **CI needs S3 access to init.** `GitHubActions-TaggingPolicy-Role` must be
+  granted `s3:ListBucket` on the bucket and `s3:GetObject`/`s3:PutObject`/
+  `s3:DeleteObject` on `tagging-policy/*` (the lockfile is `.tflock` under the
+  same prefix) before the workflow can plan/apply.
 - **The CI role cannot detach or destroy.** `GitHubActions-TaggingPolicy-Role`
   grants `CreatePolicy`, `UpdatePolicy`, `AttachPolicy`, `Describe/List`, and
   `EnablePolicyType` — but **not** `DetachPolicy` or `DeletePolicy`. So rollback
