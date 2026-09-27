@@ -42,7 +42,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.9.8
+          terraform_version: 1.16.1
 
       # In CI the OIDC role supplies credentials; there is no local profile, so
       # blank the profile var to use the default credential chain.
