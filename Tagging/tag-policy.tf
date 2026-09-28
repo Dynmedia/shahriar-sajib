@@ -12,16 +12,31 @@
 # The six keys and their allowed values below MATCH the existing hand-made
 # policy p-957g5s40o6 and the security-account Config rule exactly, so the two
 # controls agree.
+#
+# Plus one OPTIONAL key: AIWorkload (developer/product/platform). It is NOT part
+# of the six-key "tag everything" standard — it classifies AI resources only and
+# powers AI cost attribution. Like every tag-policy key it constrains VALUES when
+# present and never forces presence.
 
 locals {
   # Value-constrained keys. enforced_for is attached to these when a resource
   # type is listed in var.enforced_resource_types.
+  #
+  # The first five are the value-constrained members of the six-key Dyn standard
+  # (Owner is presence-only, below). AIWorkload is DIFFERENT in intent: it is an
+  # OPTIONAL AI-classification tag, applied only to AI resources, not part of the
+  # "tag every resource" six-key standard. It sits here so that WHEN it is set,
+  # its value is validated/enforced exactly like the others (a tag policy never
+  # requires presence, so making it optional needs no special handling — an
+  # untagged or AIWorkload-less resource is simply not evaluated for it). It
+  # feeds AI cost attribution (developer / product / platform).
   tag_value_sets = {
     Environment = ["production", "development", "integration", "staging", "sandbox", "shared", "security", "tools", "management", "sit"]
     Project     = ["networking", "connectivity", "shared-services", "security-hub", "audit", "log-archive", "infra-tools", "api-toolkit", "fast", "business-intelligence", "contentdesk", "mimir-fileflows", "blog", "account-factory"]
     CostCenter  = ["product-and-tech", "editorial-team"]
     Stage       = ["prod", "dev", "int", "staging"]
     Team        = ["dcc", "infra"]
+    AIWorkload  = ["developer", "product", "platform"]
   }
 
   # enforced_for block, emitted only when there is at least one resource type to
