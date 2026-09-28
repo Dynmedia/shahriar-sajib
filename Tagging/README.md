@@ -1,7 +1,15 @@
 # Tagging — Organization Tag Policy (preventive control)
 
-Terraform for the Dyn six-key tagging standard as an **AWS Organizations tag
-policy**, managed from the **management account** (`660571558619`).
+Terraform for the Dyn six-key tagging standard (plus the optional `AIWorkload`
+key) as an **AWS Organizations tag policy**, managed from the **management
+account** (`660571558619`).
+
+> **Status (28 September 2026): live and ENFORCING.** Policy
+> `Organization-Wide-Tagging` (`p-957g5s40o6`) is attached to 16 targets and
+> blocks non-allowed values since **2026-09-28 01:46 CEST**. `AIWorkload` is
+> enforced since 09:16 CEST. State is in S3; CI plans/applies via the
+> **Deploy Tag Policy** workflow. Full governance doc:
+> `Dynmedia/security-account` → `docs/aws-tagging-governance.md`.
 
 This is the **preventive** complement to the **detective** AWS Config rules that
 live in the `security-account` repo:
@@ -14,7 +22,9 @@ live in the `security-account` repo:
 | Checks value (wrong value)? | Yes | Yes |
 | Scope control | exclusion list of account IDs | **attachment topology** (see below) |
 
-The two use the **same six keys and allowed values**, so they agree.
+The two use the **same six keys and allowed values**, so they agree. The one
+exception is the optional `AIWorkload` key, which exists only in this tag
+policy. The Config rule doesn't check it.
 
 ---
 
@@ -22,7 +32,8 @@ The two use the **same six keys and allowed values**, so they agree.
 
 - **Does:** block a tagging operation that sets a value outside the allowed list,
   for the resource types in `enforced_resource_types`, on the value-constrained
-  keys (`Environment`, `Project`, `CostCenter`, `Stage`, `Team`).
+  keys (`Environment`, `Project`, `CostCenter`, `Stage`, `Team`, and the
+  optional `AIWorkload`).
 - **Does NOT:** stop untagged resources. AWS does not evaluate untagged resources
   (or keys not in the policy) against a tag policy. Blocking *creation of
   untagged resources* requires a Service Control Policy — deliberately out of
@@ -32,7 +43,7 @@ The two use the **same six keys and allowed values**, so they agree.
 
 ---
 
-## The six keys
+## The keys
 
 | Key | Allowed values | Enforced? |
 |---|---|---|
@@ -42,6 +53,14 @@ The two use the **same six keys and allowed values**, so they agree.
 | `CostCenter` | product-and-tech, editorial-team | same |
 | `Stage` | prod, dev, int, staging | same |
 | `Team` | dcc, infra | same |
+| `AIWorkload` *(optional)* | developer, product, platform | same, only when present |
+
+`AIWorkload` is **not** part of the six-key "tag everything" standard. It
+classifies AI resources only (SageMaker, Bedrock agents/knowledge
+bases/provisioned throughput, model-hosting compute) for AI cost attribution.
+Like every key here, its value is checked when present and its presence is
+never required. It is defined in `tag_value_sets` in `tag-policy.tf`
+(PR #16).
 
 ---
 
@@ -94,32 +113,35 @@ DynBlog, Sandbox-Managed, FX-Digital, Sandbox, AFT, Business-Intelligence, Braze
 > exclusions) and enforce **every AWS service that supports tag-policy
 > enforcement** (all `<service>:ALL_SUPPORTED` tokens, ~53 services).
 
-Plan against the live org: **16 attachments to add, 1 policy update, 0 destroy**.
+Current live state (matches the code; `terraform plan` shows no changes):
 
 - **Attachments (16):** 13 whole OUs + the 2 Contentdesk mimir accounts + aws_mmo.
-- **Enforcement:** the 5 value keys (Environment, Project, CostCenter, Stage,
-  Team) carry `enforced_for` across all supported services. Owner stays
-  presence-only.
+- **Enforcement:** the value keys (Environment, Project, CostCenter, Stage,
+  Team, AIWorkload) carry `enforced_for` across all 53 supported services.
+  Owner stays presence-only.
 
-### What this blocks on apply
+### What this blocks
 
 Across every monitored account, a create/tag operation that sets a
 **non-conforming value** (e.g. `Environment=dev`, `Project=matchday-support`)
-on any enforced resource type is **REJECTED at the API**. It does NOT block
-untagged resources. "All AWS resources" is not achievable; AWS only supports
-enforcement for the fixed service list in `variables.tf`.
+on any enforced resource type is **REJECTED at the API** with
+`TagPolicyError: The tag policy does not allow the specified value for the
+following tag key: '<Key>'.` It does NOT block untagged resources. "All AWS
+resources" is not achievable; AWS only supports enforcement for the fixed
+service list in `variables.tf`.
 
-### Strongly recommended before applying
+Verified on 2026-09-28 in `199964506618` (sandbox-shahriar) with a throwaway S3
+bucket: `Environment=dev` and `Team=marketing` rejected; `Environment=development`
+and any `Owner` accepted.
 
-Because compliance is currently ~0% org-wide, turning this on will reject
-real, in-flight tagging operations in production. Before `apply`:
+### How it was rolled out
 
-1. **Announce** to all account owners.
-2. Consider a first apply with `enforced_resource_types = []` (attaches
-   org-wide but blocks nothing) to observe the effective policy, then a second
-   apply that flips enforcement on.
-3. Have the rollback ready (below): removing `enforced_for` or detaching is
-   immediate and destroys nothing.
+1. The hand-made policy was imported into state (see below).
+2. First apply with `enforced_resource_types = []`: attached to all 16 targets,
+   blocking nothing (2026-09-28 01:29 CEST).
+3. Second apply with the full service list: enforcement on
+   (2026-09-28 01:46 CEST).
+4. `AIWorkload` added via CI (2026-09-28 09:16 CEST).
 
 ### Narrowing later if needed
 
@@ -145,32 +167,18 @@ AWS_PROFILE=mgt terraform init
 AWS_PROFILE=mgt terraform plan
 ```
 
-### REQUIRED before first apply: import the existing policy
-A policy `Organization-Wide-Tagging` (`p-957g5s40o6`) already exists by hand and
-is attached to nothing. AWS Organizations **rejects duplicate policy names**, so
-a first `apply` without importing will **FAIL** with a name-collision error
-(verified: a plan proposes to *create* `Organization-Wide-Tagging`, which the
-API will refuse because the name is taken).
-
-Import it into state first so Terraform manages the existing policy in place:
+### Import of the existing policy (done)
+`Organization-Wide-Tagging` (`p-957g5s40o6`) was originally created by hand.
+AWS Organizations rejects duplicate policy names, so it was imported into state
+once, locally with the `mgt` profile, before the first apply:
 ```bash
-cd Tagging
-AWS_PROFILE=mgt terraform init
 AWS_PROFILE=mgt terraform import aws_organizations_policy.tagging p-957g5s40o6
 ```
-After import, `terraform plan` will show an in-place **update** to the policy
-content (adding `enforced_for`) plus the **new attachment** to Sandbox-Managed —
-no create, no destroy.
-
-`policy_name` defaults to `Organization-Wide-Tagging` to match the existing
-policy. Alternatives if you do NOT want to adopt it:
-- Rename via `policy_name` to create a separate, new policy (the old one stays
-  inert) — not recommended, leaves two policies.
-
-> The import is a local, one-time step run with the `mgt` profile. The CI OIDC
-> role can create/update/attach but **cannot** import into remote state (there is
-> no remote state here yet — state is local, as in backup-solution). Decide state
-> location before relying on CI for apply; see "State" note below.
+This is already done and the state is in S3. Only repeat it if the state is
+ever lost. The 16 attachments would then need importing too
+(`aws_organizations_policy_attachment.tagging["<target-id>"]`, id
+`<target-id>:p-957g5s40o6`). `policy_name` defaults to
+`Organization-Wide-Tagging` to match the existing policy.
 
 ---
 
@@ -191,13 +199,17 @@ Everything is reversible and destroys no member-account resources:
   in the management account (versioned, encrypted, native lockfile — Terraform
   >= 1.10). Locally: `export AWS_PROFILE=mgt && terraform init`. Migrated from
   local state with all 17 resources; `terraform plan` showed no changes.
-- **CI needs S3 access to init.** `GitHubActions-TaggingPolicy-Role` must be
-  granted `s3:ListBucket` on the bucket and `s3:GetObject`/`s3:PutObject`/
-  `s3:DeleteObject` on `tagging-policy/*` (the lockfile is `.tflock` under the
-  same prefix) before the workflow can plan/apply.
-- **The CI role cannot detach or destroy.** `GitHubActions-TaggingPolicy-Role`
-  grants `CreatePolicy`, `UpdatePolicy`, `AttachPolicy`, `Describe/List`, and
-  `EnablePolicyType` — but **not** `DetachPolicy` or `DeletePolicy`. So rollback
+- **CI role permissions** (three inline policies on
+  `GitHubActions-TaggingPolicy-Role`):
+  - `OrganizationsTagPolicyManagement`: `CreatePolicy`, `UpdatePolicy`,
+    `AttachPolicy`, `EnablePolicyType`, and Describe/List.
+  - `OrganizationsReadForTerraform`: read-only calls the provider makes on
+    refresh (`ListTagsForResource`, `ListTargetsForPolicy`, Describe*).
+  - `TerraformStateAccess-TaggingPolicy`: `s3:ListBucket` on the bucket and
+    `s3:GetObject`/`PutObject`/`DeleteObject` on `tagging-policy/*` (state and
+    `.tflock`).
+- **The CI role cannot detach or destroy.** It has **no** `DetachPolicy` or
+  `DeletePolicy`. So rollback
   by detach/destroy must be done locally with the `mgt` profile, or the role's
   inline policy must be extended first. Forward changes (attach more, widen
   enforcement) work fine in CI.
