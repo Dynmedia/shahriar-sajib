@@ -201,3 +201,7 @@ Everything is reversible and destroys no member-account resources:
   by detach/destroy must be done locally with the `mgt` profile, or the role's
   inline policy must be extended first. Forward changes (attach more, widen
   enforcement) work fine in CI.
+- **The CI role itself is managed in code** in [`bootstrap/`](bootstrap/README.md)
+  (separate stack, separate state, applied locally only). Do not edit the role
+  in the console or CLI: any extra inline policy shows up as drift and is
+  removed on the next bootstrap apply.
