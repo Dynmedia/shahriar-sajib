@@ -1,14 +1,15 @@
 # Tagging — Organization Tag Policy (preventive control)
 
-Terraform for the Dyn six-key tagging standard (plus the optional `AIWorkload`
+Terraform for the Dyn six-key tagging standard (plus the optional `aiworkload`
 key) as an **AWS Organizations tag policy**, managed from the **management
 account** (`660571558619`).
 
-> **Status: ENFORCING (all 53 services) once this code is applied.** Policy
+> **Status: OBSERVE-ONLY, migrating to lowercase keys.** Policy
 > `Organization-Wide-Tagging` (`p-957g5s40o6`) is attached to 16 targets.
-> The first enforcement (2026-09-28 01:46 CEST) was rolled back the same day
-> after it blocked a team; it is re-enabled here for all 53 services at once.
-> Rollback: set `enforced_resource_types = []` and apply. State is in S3; CI
+> All tag keys are now **lowercase** (`owner`, `environment`, `project`,
+> `costcenter`, `stage`, `team`, `aiworkload`); values were already lowercase.
+> Enforcement is off (`enforced_resource_types = []`) until resources are
+> retagged. The decision is to then enforce all 53 services at once. State is in S3; CI
 > plans/applies via the **Deploy Tag Policy** workflow. Full governance doc:
 > `Dynmedia/security-account` → `docs/aws-tagging-governance.md`.
 
@@ -24,7 +25,7 @@ live in the `security-account` repo:
 | Scope control | exclusion list of account IDs | **attachment topology** (see below) |
 
 The two use the **same six keys and allowed values**, so they agree. The one
-exception is the optional `AIWorkload` key, which exists only in this tag
+exception is the optional `aiworkload` key, which exists only in this tag
 policy. The Config rule doesn't check it.
 
 ---
@@ -33,30 +34,33 @@ policy. The Config rule doesn't check it.
 
 - **Does:** block a tagging operation that sets a value outside the allowed list,
   for the resource types in `enforced_resource_types`, on the value-constrained
-  keys (`Environment`, `Project`, `CostCenter`, `Stage`, `Team`, and the
-  optional `AIWorkload`).
+  keys (`environment`, `project`, `costcenter`, `stage`, `team`, and the
+  optional `aiworkload`).
 - **Does NOT:** stop untagged resources. AWS does not evaluate untagged resources
   (or keys not in the policy) against a tag policy. Blocking *creation of
   untagged resources* requires a Service Control Policy — deliberately out of
   scope here.
-- **`Owner`** is presence-only (no value set), so it is declared but never
+- **`owner`** is presence-only (no value set), so it is declared but never
   value-enforced.
 
 ---
 
 ## The keys
 
+Keys are **case-sensitive** in a tag policy: `Environment=production` is
+non-compliant, `environment=production` is compliant. Use lowercase keys only.
+
 | Key | Allowed values | Enforced? |
 |---|---|---|
-| `Owner` | any (presence only) | never (no value set) |
-| `Environment` | production, development, integration, staging, sandbox, shared, security, tools, management, sit | when a resource type is in `enforced_resource_types` |
-| `Project` | networking, connectivity, shared-services, security-hub, audit, log-archive, infra-tools, api-toolkit, fast, business-intelligence, contentdesk, mimir-fileflows, blog, account-factory | same |
-| `CostCenter` | product-and-tech, editorial-team | same |
-| `Stage` | prod, dev, int, staging | same |
-| `Team` | dcc, infra | same |
-| `AIWorkload` *(optional)* | developer, product, platform | same, only when present |
+| `owner` | any (presence only) | never (no value set) |
+| `environment` | production, development, integration, staging, sandbox, shared, security, tools, management, sit | when a resource type is in `enforced_resource_types` |
+| `project` | networking, connectivity, shared-services, security-hub, audit, log-archive, infra-tools, api-toolkit, fast, business-intelligence, contentdesk, mimir-fileflows, blog, account-factory | same |
+| `costcenter` | product-and-tech, editorial-team | same |
+| `stage` | prod, dev, int, staging | same |
+| `team` | dcc, infra | same |
+| `aiworkload` *(optional)* | developer, product, platform | same, only when present |
 
-`AIWorkload` is **not** part of the six-key "tag everything" standard. It
+`aiworkload` is **not** part of the six-key "tag everything" standard. It
 classifies AI resources only (SageMaker, Bedrock agents/knowledge
 bases/provisioned throughput, model-hosting compute) for AI cost attribution.
 Like every key here, its value is checked when present and its presence is
@@ -107,23 +111,24 @@ DynBlog, Sandbox-Managed, FX-Digital, Sandbox, AFT, Business-Intelligence, Braze
 
 ---
 
-## Scope of the current defaults (ORG-WIDE, BROAD ENFORCEMENT)
+## Scope of the current defaults (ORG-WIDE, OBSERVE-ONLY)
 
 > The defaults attach the policy **organization-wide** (every account minus the
-> six exclusions) and enforce **every AWS service that supports tag-policy
-> enforcement** (all 53 `<service>:ALL_SUPPORTED` tokens).
+> six exclusions) with **no enforcement**. When enforcement is turned on it
+> covers **every AWS service that supports tag-policy enforcement** (all 53
+> `<service>:ALL_SUPPORTED` tokens, kept as a comment in `variables.tf`).
 
-State after apply:
+State once enforcement is turned on:
 
 - **Attachments (16):** 13 whole OUs + the 2 Contentdesk mimir accounts + aws_mmo.
-- **Enforcement:** the six value keys (Environment, Project, CostCenter, Stage,
-  Team, AIWorkload) carry `enforced_for` across all 53 services. Owner stays
+- **Enforcement:** the six value keys (environment, project, costcenter, stage,
+  team, aiworkload) carry `enforced_for` across all 53 services. owner stays
   presence-only.
 
 ### What enforcement blocks
 
 Across every monitored account, a create/tag operation that sets a
-**non-conforming value** (e.g. `Environment=dev`, `Project=matchday-support`)
+**non-conforming value** (e.g. `environment=dev`, `project=matchday-support`)
 on any enforced resource type is **REJECTED at the API** with
 `TagPolicyError: The tag policy does not allow the specified value for the
 following tag key: '<Key>'.` It does NOT block untagged resources. "All AWS
@@ -132,7 +137,7 @@ service list in `variables.tf`.
 
 Verified on 2026-09-28 in `199964506618` (sandbox-shahriar) with a throwaway S3
 bucket: `Environment=dev` and `Team=marketing` rejected; `Environment=development`
-and any `Owner` accepted.
+and any `Owner` accepted (tested with the old capitalized keys).
 
 ### How it was rolled out
 
@@ -146,20 +151,23 @@ and any `Owner` accepted.
    the live policy with `aws organizations update-policy` (break-glass, state
    not reachable), then the code default set to `[]` to match. Pre-rollback
    policy JSON was backed up locally.
-6. Enforcement re-enabled for all 53 services via this code (date = the CI
-   apply of this change).
+6. Enforcement for all 53 services merged (PR #20), not applied.
+7. Keys switched to lowercase and enforcement default set back to `[]`, before
+   any apply of #20. Reason: the org mostly uses lowercase keys already
+   (e.g. `environment` on ~6,000 resources vs `Environment` on ~290).
 
 ### Re-enabling enforcement
 
 **Decision: enforcement is re-enabled for all 53 services at once**, not in
 stages. Set the `enforced_resource_types` default to the full token list (kept
 as a comment in `variables.tf`), so `enforced_for` is added to all six value
-keys (Environment, Project, CostCenter, Stage, Team, AIWorkload).
+keys (environment, project, costcenter, stage, team, aiworkload).
 
 Before merging that change:
-1. Resolve the cause of the 2026-09-28 block (allow the value, or have the team
-   fix it).
-2. Clean up the known value mismatches (AWS Config non-compliance report), or
+1. Teams retag to the lowercase keys and allowed values. The 2026-09-28 block
+   was DCC's CDK tags (`environment=<domain>`, `project=dcc-backend`).
+2. Clean up the remaining mismatches (org-wide tag policy compliance report,
+   management account, us-east-1), or
    accept that those teams' next tag-setting deploy will fail.
 3. Announce a fixed enforcement date to account owners.
 
