@@ -9,16 +9,14 @@ management_account_profile = "mgt"
 region = "eu-central-1"
 
 # -----------------------------------------------------------------------------
-# The module defaults are ORG-WIDE attachment + NO enforcement
-# (enforced_resource_types = [], observe-only). You normally do NOT need to set
-# attach_target_ids here -- the default in variables.tf already encodes the
-# org-wide-minus-six scope.
+# The module defaults are ORG-WIDE attachment + BROAD enforcement (all 53
+# services that support tag-policy enforcement). You normally do NOT need to
+# set attach_target_ids or enforced_resource_types here.
 # -----------------------------------------------------------------------------
 
-# RE-ENABLE ENFORCEMENT: the agreed approach is all 53 services at once, done
-# by changing the default in variables.tf via PR (not via a local tfvars).
-# A local override for a one-off plan looks like:
-# enforced_resource_types = ["s3:ALL_SUPPORTED", "ec2:ALL_SUPPORTED"]
+# OBSERVE-ONLY (rollback): attach org-wide but block NOTHING. Uncomment for a
+# local plan; for the real rollback change the default in variables.tf via PR:
+# enforced_resource_types = []
 
 # NARROWER PILOT (optional): sandbox only, EC2 only. Uncomment BOTH to override
 # the org-wide defaults:
