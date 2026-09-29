@@ -92,7 +92,7 @@ variable "enforced_resource_types" {
   description = <<-EOT
     Resource types for which non-compliant tag VALUES are BLOCKED at tagging
     time (the tag policy enforced_for field), applied to the value-constrained
-    keys (Environment, Project, CostCenter, Stage, Team).
+    keys (environment, project, costcenter, stage, team, aiworkload).
 
     IMPORTANT -- what enforcement does and does NOT do:
       * It BLOCKS a tagging operation that sets a value outside the allowed list,
@@ -106,74 +106,76 @@ variable "enforced_resource_types" {
 
     HIGH BLAST RADIUS. Combined with the organization-wide attach_target_ids,
     this blocks non-compliant tag VALUES across every monitored account for all
-    the listed services. A create/tag operation setting e.g. Environment=dev on
+    the listed services. A create/tag operation setting e.g. environment=dev on
     an S3 bucket, RDS instance, Lambda function, etc. is REJECTED at the API.
     Announce to account owners before applying; expect breakage where existing
-    automation sets non-conforming values. Set to [] to attach but block
-    nothing (observe-only).
+    automation sets non-conforming values. The default [] attaches the policy
+    but blocks nothing (observe-only).
   EOT
   type        = list(string)
 
-  # ENFORCING: every service that exposes <service>:ALL_SUPPORTED with
-  # enforcement = Yes (the broadest AWS allows), all 53 at once by decision.
-  # Services without such a token (e.g. iam, glue, guardduty, securitylake,
-  # macie2) are omitted: an unsupported token fails the API.
-  # Rollback: set this default to [] and apply.
-  default = [
-    "acm:ALL_SUPPORTED",
-    "acm-pca:ALL_SUPPORTED",
-    "athena:ALL_SUPPORTED",
-    "backup:ALL_SUPPORTED",
-    "cloudtrail:ALL_SUPPORTED",
-    "cloudwatch:ALL_SUPPORTED",
-    "codebuild:ALL_SUPPORTED",
-    "codecommit:ALL_SUPPORTED",
-    "codepipeline:ALL_SUPPORTED",
-    "config:ALL_SUPPORTED",
-    "dms:ALL_SUPPORTED",
-    "dynamodb:ALL_SUPPORTED",
-    "ec2:ALL_SUPPORTED",
-    "ecr:ALL_SUPPORTED",
-    "ecs:ALL_SUPPORTED",
-    "eks:ALL_SUPPORTED",
-    "elasticache:ALL_SUPPORTED",
-    "elasticbeanstalk:ALL_SUPPORTED",
-    "elasticfilesystem:ALL_SUPPORTED",
-    "elasticmapreduce:ALL_SUPPORTED",
-    "entityresolution:ALL_SUPPORTED",
-    "events:ALL_SUPPORTED",
-    "firehose:ALL_SUPPORTED",
-    "fsx:ALL_SUPPORTED",
-    "healthlake:ALL_SUPPORTED",
-    "internetmonitor:ALL_SUPPORTED",
-    "kinesisanalytics:ALL_SUPPORTED",
-    "kms:ALL_SUPPORTED",
-    "lambda:ALL_SUPPORTED",
-    "mq:ALL_SUPPORTED",
-    "network-firewall:ALL_SUPPORTED",
-    "oam:ALL_SUPPORTED",
-    "omics:ALL_SUPPORTED",
-    "organizations:ALL_SUPPORTED",
-    "pipes:ALL_SUPPORTED",
-    "ram:ALL_SUPPORTED",
-    "rbin:ALL_SUPPORTED",
-    "rds:ALL_SUPPORTED",
-    "redshift:ALL_SUPPORTED",
-    "redshift-serverless:ALL_SUPPORTED",
-    "resource-groups:ALL_SUPPORTED",
-    "route53:ALL_SUPPORTED",
-    "route53resolver:ALL_SUPPORTED",
-    "s3:ALL_SUPPORTED",
-    "scheduler:ALL_SUPPORTED",
-    "secretsmanager:ALL_SUPPORTED",
-    "sns:ALL_SUPPORTED",
-    "sqs:ALL_SUPPORTED",
-    "ssm:ALL_SUPPORTED",
-    "states:ALL_SUPPORTED",
-    "transfer:ALL_SUPPORTED",
-    "wisdom:ALL_SUPPORTED",
-    "workspaces:ALL_SUPPORTED",
-  ]
+  # DEFAULT IS [] (observe-only) while the org migrates to lowercase keys.
+  # Switching key case changes which resources are compliant, so blocking
+  # stays off until the tag policy compliance report is clean.
+  # To enforce (decision: all 53 at once), uncomment the list below as the
+  # default. Every service exposing <service>:ALL_SUPPORTED with
+  # enforcement = Yes; services without such a token (e.g. iam, glue,
+  # guardduty, securitylake, macie2) are omitted: an unsupported token fails
+  # the API.
+  #   "acm:ALL_SUPPORTED",
+  #   "acm-pca:ALL_SUPPORTED",
+  #   "athena:ALL_SUPPORTED",
+  #   "backup:ALL_SUPPORTED",
+  #   "cloudtrail:ALL_SUPPORTED",
+  #   "cloudwatch:ALL_SUPPORTED",
+  #   "codebuild:ALL_SUPPORTED",
+  #   "codecommit:ALL_SUPPORTED",
+  #   "codepipeline:ALL_SUPPORTED",
+  #   "config:ALL_SUPPORTED",
+  #   "dms:ALL_SUPPORTED",
+  #   "dynamodb:ALL_SUPPORTED",
+  #   "ec2:ALL_SUPPORTED",
+  #   "ecr:ALL_SUPPORTED",
+  #   "ecs:ALL_SUPPORTED",
+  #   "eks:ALL_SUPPORTED",
+  #   "elasticache:ALL_SUPPORTED",
+  #   "elasticbeanstalk:ALL_SUPPORTED",
+  #   "elasticfilesystem:ALL_SUPPORTED",
+  #   "elasticmapreduce:ALL_SUPPORTED",
+  #   "entityresolution:ALL_SUPPORTED",
+  #   "events:ALL_SUPPORTED",
+  #   "firehose:ALL_SUPPORTED",
+  #   "fsx:ALL_SUPPORTED",
+  #   "healthlake:ALL_SUPPORTED",
+  #   "internetmonitor:ALL_SUPPORTED",
+  #   "kinesisanalytics:ALL_SUPPORTED",
+  #   "kms:ALL_SUPPORTED",
+  #   "lambda:ALL_SUPPORTED",
+  #   "mq:ALL_SUPPORTED",
+  #   "network-firewall:ALL_SUPPORTED",
+  #   "oam:ALL_SUPPORTED",
+  #   "omics:ALL_SUPPORTED",
+  #   "organizations:ALL_SUPPORTED",
+  #   "pipes:ALL_SUPPORTED",
+  #   "ram:ALL_SUPPORTED",
+  #   "rbin:ALL_SUPPORTED",
+  #   "rds:ALL_SUPPORTED",
+  #   "redshift:ALL_SUPPORTED",
+  #   "redshift-serverless:ALL_SUPPORTED",
+  #   "resource-groups:ALL_SUPPORTED",
+  #   "route53:ALL_SUPPORTED",
+  #   "route53resolver:ALL_SUPPORTED",
+  #   "s3:ALL_SUPPORTED",
+  #   "scheduler:ALL_SUPPORTED",
+  #   "secretsmanager:ALL_SUPPORTED",
+  #   "sns:ALL_SUPPORTED",
+  #   "sqs:ALL_SUPPORTED",
+  #   "ssm:ALL_SUPPORTED",
+  #   "states:ALL_SUPPORTED",
+  #   "transfer:ALL_SUPPORTED",
+  #   "wisdom:ALL_SUPPORTED",
+  #   "workspaces:ALL_SUPPORTED",
+  default = []
 }
 
 variable "organization_id" {
