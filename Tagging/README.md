@@ -4,11 +4,14 @@ Terraform for the Dyn six-key tagging standard (plus the optional `AIWorkload`
 key) as an **AWS Organizations tag policy**, managed from the **management
 account** (`660571558619`).
 
-> **Status (28 September 2026): live and ENFORCING.** Policy
-> `Organization-Wide-Tagging` (`p-957g5s40o6`) is attached to 16 targets and
-> blocks non-allowed values since **2026-09-28 01:46 CEST**. `AIWorkload` is
-> enforced since 09:16 CEST. State is in S3; CI plans/applies via the
-> **Deploy Tag Policy** workflow. Full governance doc:
+> **Status: live, OBSERVE-ONLY (enforcement rolled back).** Policy
+> `Organization-Wide-Tagging` (`p-957g5s40o6`) is attached to 16 targets.
+> Enforcement ran from 2026-09-28 01:46 CEST until it blocked a team the same
+> day. It was then removed with `aws organizations update-policy` (break-glass;
+> the S3 state was not reachable). The code default is now
+> `enforced_resource_types = []`, so the policy blocks nothing and a CI apply
+> cannot re-enable blocking by accident. State is in S3; CI plans/applies via
+> the **Deploy Tag Policy** workflow. Full governance doc:
 > `Dynmedia/security-account` → `docs/aws-tagging-governance.md`.
 
 This is the **preventive** complement to the **detective** AWS Config rules that
@@ -106,21 +109,20 @@ DynBlog, Sandbox-Managed, FX-Digital, Sandbox, AFT, Business-Intelligence, Braze
 
 ---
 
-## Scope of the current defaults (ORG-WIDE, BROAD ENFORCEMENT)
+## Scope of the current defaults (ORG-WIDE, OBSERVE-ONLY)
 
-> **This code is configured for maximum coverage, not a pilot.** The defaults
-> attach the policy **organization-wide** (every account minus the six
-> exclusions) and enforce **every AWS service that supports tag-policy
-> enforcement** (all `<service>:ALL_SUPPORTED` tokens, ~53 services).
+> The defaults attach the policy **organization-wide** (every account minus the
+> six exclusions) with **no enforcement** (`enforced_resource_types = []`).
+> The full list of enforceable services (all `<service>:ALL_SUPPORTED` tokens,
+> 53 services) is kept as a comment in `variables.tf` for re-enabling.
 
-Current live state (matches the code; `terraform plan` shows no changes):
+Current live state (matches the code):
 
 - **Attachments (16):** 13 whole OUs + the 2 Contentdesk mimir accounts + aws_mmo.
-- **Enforcement:** the value keys (Environment, Project, CostCenter, Stage,
-  Team, AIWorkload) carry `enforced_for` across all 53 supported services.
-  Owner stays presence-only.
+- **Enforcement:** none. No key carries `enforced_for`. Non-compliant values
+  are reported (tag policy compliance + AWS Config) but not blocked.
 
-### What this blocks
+### What enforcement blocks (when re-enabled)
 
 Across every monitored account, a create/tag operation that sets a
 **non-conforming value** (e.g. `Environment=dev`, `Project=matchday-support`)
@@ -142,6 +144,16 @@ and any `Owner` accepted.
 3. Second apply with the full service list: enforcement on
    (2026-09-28 01:46 CEST).
 4. `AIWorkload` added via CI (2026-09-28 09:16 CEST).
+5. Enforcement rolled back after it blocked a team: `enforced_for` removed from
+   the live policy with `aws organizations update-policy` (break-glass, state
+   not reachable), then the code default set to `[]` to match. Pre-rollback
+   policy JSON was backed up locally.
+
+### Re-enabling enforcement
+
+Set `enforced_resource_types` to an explicit list (copy tokens from the comment
+in `variables.tf`). Prefer a few services at a time, after notifying the owning
+teams. Run the workflow with `plan` first and check the `enforced_for` diff.
 
 ### Narrowing later if needed
 
