@@ -118,8 +118,8 @@ variable "enforced_resource_types" {
   # after it blocked a team; the live policy has no enforced_for. Keeping the
   # default empty means a CI `apply` cannot silently re-enable blocking.
   #
-  # To re-enable, set this to an explicit list -- ideally a few services at a
-  # time, after the owning teams are notified. Full list of every service that
+  # To re-enable (decision: all 53 at once, see README), uncomment the list
+  # below as the default, after the owning teams are notified. Every service that
   # exposes <service>:ALL_SUPPORTED with enforcement = Yes (the broadest AWS
   # allows). Services without such a token (e.g. iam, glue, guardduty,
   # securitylake, macie2) are omitted: an unsupported token fails the API.

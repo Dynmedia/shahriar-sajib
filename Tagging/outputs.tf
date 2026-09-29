@@ -18,7 +18,7 @@ output "enforcement_summary" {
   value = length(var.enforced_resource_types) > 0 ? {
     mode                    = "ENFORCING (blocks non-compliant values)"
     enforced_resource_types = sort(var.enforced_resource_types)
-    enforced_keys           = ["Environment", "Project", "CostCenter", "Stage", "Team"]
+    enforced_keys           = sort(keys(local.tag_value_sets))
     note                    = "Untagged resources are NOT blocked; only non-compliant VALUES on the listed types. Owner is presence-only and never value-enforced."
     } : {
     mode                    = "DETECT-ONLY (attached, nothing blocked)"

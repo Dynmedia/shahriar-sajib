@@ -15,8 +15,9 @@ region = "eu-central-1"
 # org-wide-minus-six scope.
 # -----------------------------------------------------------------------------
 
-# RE-ENABLE ENFORCEMENT (deliberately, a few services at a time). Tokens are
-# listed in the comment on enforced_resource_types in variables.tf:
+# RE-ENABLE ENFORCEMENT: the agreed approach is all 53 services at once, done
+# by changing the default in variables.tf via PR (not via a local tfvars).
+# A local override for a one-off plan looks like:
 # enforced_resource_types = ["s3:ALL_SUPPORTED", "ec2:ALL_SUPPORTED"]
 
 # NARROWER PILOT (optional): sandbox only, EC2 only. Uncomment BOTH to override
