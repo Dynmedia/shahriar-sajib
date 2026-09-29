@@ -151,9 +151,21 @@ and any `Owner` accepted.
 
 ### Re-enabling enforcement
 
-Set `enforced_resource_types` to an explicit list (copy tokens from the comment
-in `variables.tf`). Prefer a few services at a time, after notifying the owning
-teams. Run the workflow with `plan` first and check the `enforced_for` diff.
+**Decision: enforcement is re-enabled for all 53 services at once**, not in
+stages. Set the `enforced_resource_types` default to the full token list (kept
+as a comment in `variables.tf`), so `enforced_for` is added to all six value
+keys (Environment, Project, CostCenter, Stage, Team, AIWorkload).
+
+Before merging that change:
+1. Resolve the cause of the 2026-09-28 block (allow the value, or have the team
+   fix it).
+2. Clean up the known value mismatches (AWS Config non-compliance report), or
+   accept that those teams' next tag-setting deploy will fail.
+3. Announce a fixed enforcement date to account owners.
+
+Then run the workflow with `plan` (expect `enforced_for` added to the six value
+keys, no attachment changes), then `apply`. If a team is blocked, roll back by
+setting the default to `[]` and running `apply` (see Rollback).
 
 ### Narrowing later if needed
 
