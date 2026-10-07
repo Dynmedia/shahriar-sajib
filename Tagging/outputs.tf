@@ -19,7 +19,7 @@ output "enforcement_summary" {
     mode                    = "ENFORCING (blocks non-compliant values)"
     enforced_resource_types = sort(var.enforced_resource_types)
     enforced_keys           = sort(keys(local.tag_value_sets))
-    note                    = "Untagged resources are NOT blocked; only non-compliant VALUES on the listed types. dyn-owner is presence-only and never value-enforced."
+    note                    = "Untagged resources are NOT blocked; only non-compliant VALUES on the listed types. Owner is presence-only and never value-enforced."
     } : {
     mode                    = "DETECT-ONLY (attached, nothing blocked)"
     enforced_resource_types = []
