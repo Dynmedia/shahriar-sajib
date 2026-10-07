@@ -92,7 +92,8 @@ variable "enforced_resource_types" {
   description = <<-EOT
     Resource types for which non-compliant tag VALUES are BLOCKED at tagging
     time (the tag policy enforced_for field), applied to the value-constrained
-    keys (environment, project, costcenter, stage, team, aiworkload).
+    keys (dyn-environment, dyn-project, dyn-costcenter, dyn-stage, dyn-team,
+    dyn-aiworkload).
 
     IMPORTANT -- what enforcement does and does NOT do:
       * It BLOCKS a tagging operation that sets a value outside the allowed list,
@@ -106,7 +107,7 @@ variable "enforced_resource_types" {
 
     HIGH BLAST RADIUS. Combined with the organization-wide attach_target_ids,
     this blocks non-compliant tag VALUES across every monitored account for all
-    the listed services. A create/tag operation setting e.g. environment=dev on
+    the listed services. A create/tag operation setting e.g. dyn-environment=dev on
     an S3 bucket, RDS instance, Lambda function, etc. is REJECTED at the API.
     Announce to account owners before applying; expect breakage where existing
     automation sets non-conforming values. The default [] attaches the policy
@@ -114,8 +115,8 @@ variable "enforced_resource_types" {
   EOT
   type        = list(string)
 
-  # DEFAULT IS [] (observe-only) while the org migrates to lowercase keys.
-  # Switching key case changes which resources are compliant, so blocking
+  # DEFAULT IS [] (observe-only) while the org migrates to dyn- keys.
+  # Renaming keys changes which resources are compliant, so blocking
   # stays off until the tag policy compliance report is clean.
   # To enforce (decision: all 53 at once), uncomment the list below as the
   # default. Every service exposing <service>:ALL_SUPPORTED with

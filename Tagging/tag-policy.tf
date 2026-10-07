@@ -13,11 +13,12 @@
 # policy p-957g5s40o6 and the security-account Config rule exactly, so the two
 # controls agree.
 #
-# ALL KEYS ARE LOWERCASE (owner, environment, project, costcenter, stage,
-# team, aiworkload). Tag policies are case-sensitive on the key spelling:
-# `Environment` is non-compliant, `environment` is compliant.
+# ALL KEYS ARE LOWERCASE WITH A dyn- PREFIX (dyn-owner, dyn-environment,
+# dyn-project, dyn-costcenter, dyn-stage, dyn-team, dyn-aiworkload). Tag
+# policies are case-sensitive on the key spelling: `environment` or
+# `Environment` is non-compliant, `dyn-environment` is compliant.
 #
-# Plus one OPTIONAL key: aiworkload (developer/product/platform). It is NOT part
+# Plus one OPTIONAL key: dyn-aiworkload (developer/product/platform). It is NOT part
 # of the six-key "tag everything" standard — it classifies AI resources only and
 # powers AI cost attribution. Like every tag-policy key it constrains VALUES when
 # present and never forces presence.
@@ -27,20 +28,20 @@ locals {
   # type is listed in var.enforced_resource_types.
   #
   # The first five are the value-constrained members of the six-key Dyn standard
-  # (owner is presence-only, below). aiworkload is DIFFERENT in intent: it is an
+  # (dyn-owner is presence-only, below). dyn-aiworkload is DIFFERENT in intent: it is an
   # OPTIONAL AI-classification tag, applied only to AI resources, not part of the
   # "tag every resource" six-key standard. It sits here so that WHEN it is set,
   # its value is validated/enforced exactly like the others (a tag policy never
   # requires presence, so making it optional needs no special handling — an
-  # untagged or aiworkload-less resource is simply not evaluated for it). It
+  # untagged or dyn-aiworkload-less resource is simply not evaluated for it). It
   # feeds AI cost attribution (developer / product / platform).
   tag_value_sets = {
-    environment = ["production", "development", "integration", "staging", "sandbox", "shared", "security", "tools", "management", "sit"]
-    project     = ["networking", "connectivity", "shared-services", "security-hub", "audit", "log-archive", "infra-tools", "api-toolkit", "fast", "business-intelligence", "contentdesk", "mimir-fileflows", "blog", "account-factory"]
-    costcenter  = ["product-and-tech", "editorial-team"]
-    stage       = ["prod", "dev", "int", "staging"]
-    team        = ["dcc", "infra"]
-    aiworkload  = ["developer", "product", "platform"]
+    "dyn-environment" = ["production", "development", "integration", "staging", "sandbox", "shared", "security", "tools", "management", "sit"]
+    "dyn-project"     = ["networking", "connectivity", "shared-services", "security-hub", "audit", "log-archive", "infra-tools", "api-toolkit", "fast", "business-intelligence", "contentdesk", "mimir-fileflows", "blog", "account-factory"]
+    "dyn-costcenter"  = ["product-and-tech", "editorial-team"]
+    "dyn-stage"       = ["prod", "dev", "int", "staging"]
+    "dyn-team"        = ["dcc", "infra"]
+    "dyn-aiworkload"  = ["developer", "product", "platform"]
   }
 
   # enforced_for block, emitted only when there is at least one resource type to
@@ -49,11 +50,11 @@ locals {
     "@@assign" = var.enforced_resource_types
   } : null
 
-  # owner is PRESENCE-ONLY (no value set), so it can never be value-enforced.
+  # dyn-owner is PRESENCE-ONLY (no value set), so it can never be value-enforced.
   # It is declared as a key with no tag_value / enforced_for.
   owner_statement = {
-    owner = {
-      tag_key = { "@@assign" = "owner" }
+    "dyn-owner" = {
+      tag_key = { "@@assign" = "dyn-owner" }
     }
   }
 
